@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { ArchiveX, Command, File, Inbox, Send, Trash2 } from "lucide-react"
+import { ArchiveX, Command, File, Inbox, Send, Trash2, Check } from "lucide-react"
 import { getData } from "@/app/actions/route"
 import { NavUser } from "@/components/nav-user"
 import { Label } from "@/components/ui/label"
@@ -36,7 +36,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils" // Assuming you have this utility for classNames
+import { cn } from "@/lib/utils"
 
 interface Resource {
   id: string;
@@ -51,7 +51,7 @@ interface Resource {
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onResourceSelect?: (resource: Resource) => void;
-  selectedResourceId?: string | null; // New prop to track selected resource
+  selectedResourceId?: string | null;
 }
 
 async function fetchYouTubeTitle(url: string): Promise<string> {
@@ -97,7 +97,21 @@ export function AppSidebar({
   const [resources, setResources] = React.useState<Resource[]>([])
   const [openDialog, setOpenDialog] = React.useState(false)
   const [selectedPlaylistLink, setSelectedPlaylistLink] = React.useState<string | null>(null)
+  const [watchedVideos, setWatchedVideos] = React.useState<Set<string>>(new Set())
   const { setOpen } = useSidebar()
+
+  // Load watched videos from localStorage on mount
+  React.useEffect(() => {
+    const storedWatched = localStorage.getItem("watchedVideos")
+    if (storedWatched) {
+      setWatchedVideos(new Set(JSON.parse(storedWatched)))
+    }
+  }, [])
+
+  // Save watched videos to localStorage when updated
+  React.useEffect(() => {
+    localStorage.setItem("watchedVideos", JSON.stringify([...watchedVideos]))
+  }, [watchedVideos])
 
   React.useEffect(() => {
     async function fetchResourcesAndDetails() {
@@ -137,11 +151,23 @@ export function AppSidebar({
     onResourceSelect?.(resource)
   }
 
+  const toggleWatched = (resourceId: string) => {
+    setWatchedVideos((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(resourceId)) {
+        newSet.delete(resourceId)
+      } else {
+        newSet.add(resourceId)
+      }
+      return newSet
+    })
+  }
+
   return (
     <Sidebar
       collapsible="icon"
       className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
-      {...props}
+      {...props} // Only pass Sidebar-specific props
     >
       <Sidebar
         collapsible="none"
@@ -233,8 +259,19 @@ export function AppSidebar({
                         </span>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="px-4 py-2 text-sm break-words max-w-[260px]">
-                          Link: {resource.Link}
+                        <div className="px-4 py-2 text-sm break-words max-w-[260px] flex items-center gap-2">
+                          <span>Link: {resource.Link}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleWatched(resource.id)}
+                            className={cn(
+                              "p-1",
+                              watchedVideos.has(resource.id) && "text-green-500"
+                            )}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
                         </div>
                       </AccordionContent>
                     </AccordionItem>
@@ -263,9 +300,23 @@ export function AppSidebar({
                     <span className="break-words max-w-[260px] text-xs">
                       {resource.Description}
                     </span>
-                    <span className="break-words max-w-[260px] text-xs">
-                      Link: {resource.Link}
-                    </span>
+                    <div className="break-words max-w-[260px] text-xs flex items-center gap-2">
+                      <span>Link: {resource.Link}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation() // Prevent triggering the parent click
+                          toggleWatched(resource.id)
+                        }}
+                        className={cn(
+                          "p-1",
+                          watchedVideos.has(resource.id) && "text-green-500"
+                        )}
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </a>
                 )
               ))}
