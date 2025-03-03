@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { ArchiveX, Command, File, Inbox, Send, Trash2, Check } from "lucide-react"
+import { Command, Check, Table as TableIcon } from "lucide-react"
 import { getData } from "@/app/actions/route"
 import { NavUser } from "@/components/nav-user"
 import { Label } from "@/components/ui/label"
@@ -33,9 +33,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 interface Resource {
@@ -70,7 +77,6 @@ async function fetchYouTubeTitle(url: string): Promise<string> {
 function extractPlaylistId(url: string): string | null {
   const playlistRegex = /[?&]list=([^#\&\?]+)/
   const match = url.match(playlistRegex)
-  console.log(`Extracting playlist ID from ${url}:`, match ? match[1] : null)
   return match ? match[1] : null
 }
 
@@ -81,11 +87,8 @@ const user = {
 }
 
 const navMain = [
-  { title: "Resources", url: "#", icon: Inbox, isActive: true },
-  { title: "Drafts", url: "#", icon: File, isActive: false },
-  { title: "Sent", url: "#", icon: Send, isActive: false },
-  { title: "Junk", url: "#", icon: ArchiveX, isActive: false },
-  { title: "Trash", url: "#", icon: Trash2, isActive: false },
+  { title: "All Resources", url: "#", icon: Command, isActive: true },
+  { title: "Table", url: "#", icon: TableIcon, isActive: false },
 ]
 
 export function AppSidebar({ 
@@ -100,7 +103,6 @@ export function AppSidebar({
   const [watchedVideos, setWatchedVideos] = React.useState<Set<string>>(new Set())
   const { setOpen } = useSidebar()
 
-  // Load watched videos from localStorage on mount
   React.useEffect(() => {
     const storedWatched = localStorage.getItem("watchedVideos")
     if (storedWatched) {
@@ -108,7 +110,6 @@ export function AppSidebar({
     }
   }, [])
 
-  // Save watched videos to localStorage when updated
   React.useEffect(() => {
     localStorage.setItem("watchedVideos", JSON.stringify([...watchedVideos]))
   }, [watchedVideos])
@@ -167,7 +168,7 @@ export function AppSidebar({
     <Sidebar
       collapsible="icon"
       className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
-      {...props} // Only pass Sidebar-specific props
+      {...props}
     >
       <Sidebar
         collapsible="none"
@@ -235,36 +236,127 @@ export function AppSidebar({
         <SidebarContent>
           <SidebarGroup className="px-0">
             <SidebarGroupContent>
-              {resources.map((resource) => (
-                resource.isPlaylist ? (
-                  <Accordion type="single" collapsible key={resource.id}>
-                    <AccordionItem value={resource.id}>
-                      <AccordionTrigger 
+              {activeItem.title === "All Resources" ? (
+                resources.map((resource) => (
+                  resource.isPlaylist ? (
+                    <Accordion type="single" collapsible key={resource.id}>
+                      <AccordionItem value={resource.id}>
+                        <AccordionTrigger 
+                          className={cn(
+                            "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            selectedResourceId === resource.id && "bg-gray-700 text-white",
+                            watchedVideos.has(resource.id) && "bg-pink-100"
+                          )}
+                          onClick={() => handlePlaylistClick(resource)}
+                        >
+                          <div className="flex w-full items-center gap-2 flex-wrap">
+                            <span className="break-words max-w-[200px]">
+                              {resource.videoTitle || resource.Title}
+                            </span>
+                            <span className="ml-auto text-xs shrink-0">
+                              {new Date(resource.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <span className="break-words max-w-[260px] text-xs">
+                            {resource.Description}
+                          </span>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <div className="px-4 py-2 text-sm break-words max-w-[260px] flex items-center gap-2">
+                            <span>Link: {resource.Link}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleWatched(resource.id)}
+                              className={cn(
+                                "p-1",
+                                watchedVideos.has(resource.id) && "text-green-500"
+                              )}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  ) : (
+                    <a
+                      href="#"
+                      key={resource.id}
+                      className={cn(
+                        "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        selectedResourceId === resource.id && "bg-gray-700 text-white",
+                        watchedVideos.has(resource.id) && "bg-pink-100"
+                      )}
+                      onClick={(e) => {
+                        e.preventDefault()
+                        handlePlaylistClick(resource)
+                      }}
+                    >
+                      <div className="flex w-full items-center gap-2 flex-wrap">
+                        <span className="break-words max-w-[200px]">
+                          {resource.videoTitle || resource.Title}
+                        </span>
+                        <span className="ml-auto text-xs shrink-0">
+                          {new Date(resource.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <span className="break-words max-w-[260px] text-xs">
+                        {resource.Description}
+                      </span>
+                      <div className="break-words max-w-[260px] text-xs flex items-center gap-2">
+                        <span>Link: {resource.Link}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleWatched(resource.id)
+                          }}
+                          className={cn(
+                            "p-1",
+                            watchedVideos.has(resource.id) && "text-green-500"
+                          )}
+                        >
+                          <Check className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </a>
+                  )
+                ))
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Link</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Watched</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {resources.map((resource) => (
+                      <TableRow 
+                        key={resource.id}
                         className={cn(
-                          "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          selectedResourceId === resource.id && "bg-gray-700 text-white"
+                          selectedResourceId === resource.id && "bg-gray-700 text-white",
+                          watchedVideos.has(resource.id) && "bg-pink-100"
                         )}
                         onClick={() => handlePlaylistClick(resource)}
                       >
-                        <div className="flex w-full items-center gap-2 flex-wrap">
-                          <span className="break-words max-w-[200px]">
-                            {resource.videoTitle || resource.Title}
-                          </span>
-                          <span className="ml-auto text-xs shrink-0">
-                            {new Date(resource.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <span className="break-words max-w-[260px] text-xs">
-                          {resource.Description}
-                        </span>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <div className="px-4 py-2 text-sm break-words max-w-[260px] flex items-center gap-2">
-                          <span>Link: {resource.Link}</span>
+                        <TableCell>{resource.videoTitle || resource.Title}</TableCell>
+                        <TableCell>{resource.Description}</TableCell>
+                        <TableCell className="truncate max-w-[200px]">{resource.Link}</TableCell>
+                        <TableCell>{resource.isPlaylist ? "Playlist" : "Video"}</TableCell>
+                        <TableCell>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toggleWatched(resource.id)}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleWatched(resource.id)
+                            }}
                             className={cn(
                               "p-1",
                               watchedVideos.has(resource.id) && "text-green-500"
@@ -272,54 +364,12 @@ export function AppSidebar({
                           >
                             <Check className="h-4 w-4" />
                           </Button>
-                        </div>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
-                ) : (
-                  <a
-                    href="#"
-                    key={resource.id}
-                    className={cn(
-                      "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                      selectedResourceId === resource.id && "bg-gray-700 text-white"
-                    )}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      handlePlaylistClick(resource)
-                    }}
-                  >
-                    <div className="flex w-full items-center gap-2 flex-wrap">
-                      <span className="break-words max-w-[200px]">
-                        {resource.videoTitle || resource.Title}
-                      </span>
-                      <span className="ml-auto text-xs shrink-0">
-                        {new Date(resource.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <span className="break-words max-w-[260px] text-xs">
-                      {resource.Description}
-                    </span>
-                    <div className="break-words max-w-[260px] text-xs flex items-center gap-2">
-                      <span>Link: {resource.Link}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation() // Prevent triggering the parent click
-                          toggleWatched(resource.id)
-                        }}
-                        className={cn(
-                          "p-1",
-                          watchedVideos.has(resource.id) && "text-green-500"
-                        )}
-                      >
-                        <Check className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </a>
-                )
-              ))}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
