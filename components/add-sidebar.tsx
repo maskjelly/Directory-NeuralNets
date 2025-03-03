@@ -122,24 +122,23 @@ export function AppSidebar({
   const [openDialog, setOpenDialog] = React.useState(false)
   const [selectedPlaylistLink, setSelectedPlaylistLink] = React.useState<string | null>(null)
   const [watchedVideos, setWatchedVideos] = React.useState<Set<string>>(new Set())
-  const { setOpen } = useSidebar()
+  const [sidebarWidth, setSidebarWidth] = React.useState<number>(350)
+  const { open, setOpen } = useSidebar()
   const sidebarRef = React.useRef<HTMLDivElement>(null)
 
-  // Initialize sidebar width from localStorage or default to 350px
-  const [sidebarWidth, setSidebarWidth] = React.useState(() => {
-    const storedWidth = localStorage.getItem("sidebarWidth")
-    return storedWidth ? parseInt(storedWidth, 10) : 350
-  })
-
   React.useEffect(() => {
-    const storedWatched = localStorage.getItem("watchedVideos")
-    if (storedWatched) {
-      setWatchedVideos(new Set(JSON.parse(storedWatched)))
+    if (typeof window !== "undefined") {
+      const storedWidth = localStorage.getItem("sidebarWidth")
+      const storedWatched = localStorage.getItem("watchedVideos")
+      if (storedWidth) setSidebarWidth(parseInt(storedWidth, 10))
+      if (storedWatched) setWatchedVideos(new Set(JSON.parse(storedWatched)))
     }
   }, [])
 
   React.useEffect(() => {
-    localStorage.setItem("watchedVideos", JSON.stringify([...watchedVideos]))
+    if (typeof window !== "undefined") {
+      localStorage.setItem("watchedVideos", JSON.stringify([...watchedVideos]))
+    }
   }, [watchedVideos])
 
   React.useEffect(() => {
@@ -194,13 +193,15 @@ export function AppSidebar({
   const handleResize = (e: MouseEvent) => {
     if (sidebarRef.current) {
       const newWidth = e.clientX;
-      const minWidth = 200;
+      const minWidth = open ? 200 : 60;
       const maxWidth = window.innerWidth * 0.5;
       const adjustedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
       setSidebarWidth(adjustedWidth);
       sidebarRef.current.style.width = `${adjustedWidth}px`;
       document.documentElement.style.setProperty('--sidebar-width', `${adjustedWidth}px`);
-      localStorage.setItem("sidebarWidth", adjustedWidth.toString()); // Persist width
+      if (typeof window !== "undefined") {
+        localStorage.setItem("sidebarWidth", adjustedWidth.toString());
+      }
     }
   }
 
@@ -218,8 +219,11 @@ export function AppSidebar({
   return (
     <div 
       ref={sidebarRef} 
-      className="relative flex flex-col h-screen border-r transition-width duration-100"
-      style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '50vw' }}
+      className={cn(
+        "relative flex flex-col h-screen border-r transition-width duration-100",
+        !open && "w-[var(--sidebar-width-icon)]"
+      )}
+      style={{ width: open ? `${sidebarWidth}px` : undefined, minWidth: open ? '200px' : '60px', maxWidth: '50vw' }}
     >
       <Sidebar
         collapsible="icon"
@@ -277,7 +281,7 @@ export function AppSidebar({
           </SidebarFooter>
         </Sidebar>
 
-        <Sidebar collapsible="none" className="hidden flex-1 md:flex">
+        <Sidebar collapsible="none" className={cn("hidden flex-1 md:flex", !open && "hidden")}>
           <SidebarHeader className="gap-3.5 border-b p-4">
             <div className="flex w-full items-center justify-between">
               <div className="text-base font-medium text-foreground">
@@ -326,13 +330,17 @@ export function AppSidebar({
                             {resource.Description}
                           </span>
                           {resource.authorName && (
-                            <span className="text-xs text-muted-foreground">
+                            <div className="text-xs text-muted-foreground">
                               By: <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{resource.authorName}</a>
-                            </span>
+                            </div>
                           )}
                         </AccordionTrigger>
                         <AccordionContent>
                           <div className="px-4 py-2 text-sm break-words max-w-[260px] flex flex-col gap-2">
+                            <div>Link: <a href={resource.Link} target="_blank" rel="noopener noreferrer" className="underline">{resource.Link}</a></div>
+                            {resource.html && (
+                              <span className="text-xs text-muted-foreground">Embed Code Available</span>
+                            )}
                             <Button
                               variant="outline"
                               size="sm"
@@ -348,18 +356,14 @@ export function AppSidebar({
                       </AccordionItem>
                     </Accordion>
                   ) : (
-                    <a
-                      href="#"
+                    <div
                       key={resource.id}
                       className={cn(
-                        "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                        "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer",
                         selectedResourceId === resource.id && "bg-gray-700 text-white",
                         watchedVideos.has(resource.id) && "bg-pink-100"
                       )}
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handlePlaylistClick(resource)
-                      }}
+                      onClick={() => handlePlaylistClick(resource)}
                     >
                       <div className="flex w-full items-center gap-2 flex-wrap">
                         {resource.thumbnailUrl && (
@@ -382,11 +386,15 @@ export function AppSidebar({
                         {resource.Description}
                       </span>
                       {resource.authorName && (
-                        <span className="text-xs text-muted-foreground">
+                        <div className="text-xs text-muted-foreground">
                           By: <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{resource.authorName}</a>
-                        </span>
+                        </div>
                       )}
                       <div className="break-words max-w-[260px] text-xs flex items-center gap-2">
+                        <div>Link: <a href={resource.Link} target="_blank" rel="noopener noreferrer" className="underline">{resource.Link}</a></div>
+                        {resource.html && (
+                          <span className="text-xs text-muted-foreground">Embed Code Available</span>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -401,7 +409,7 @@ export function AppSidebar({
                           {watchedVideos.has(resource.id) ? "Watched" : "Mark Watched"}
                         </Button>
                       </div>
-                    </a>
+                    </div>
                   )
                 ))}
               </SidebarGroupContent>
@@ -411,7 +419,10 @@ export function AppSidebar({
       </Sidebar>
 
       <div
-        className="absolute top-0 right-0 w-2 h-full bg-gray-300 cursor-col-resize hover:bg-gray-400"
+        className={cn(
+          "absolute top-0 right-0 w-2 h-full bg-gray-300 cursor-col-resize hover:bg-gray-400",
+          !open && "hidden"
+        )}
         onMouseDown={startResizing}
       />
 

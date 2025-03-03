@@ -47,6 +47,45 @@ interface Resource {
   html?: string;
 }
 
+async function fetchYouTubeDetails(url: string): Promise<{
+  videoTitle: string;
+  thumbnailUrl?: string;
+  thumbnailWidth?: number;
+  thumbnailHeight?: number;
+  authorName?: string;
+  authorUrl?: string;
+  uploadDate?: string;
+  html?: string;
+}> {
+  try {
+    const response = await fetch(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
+    )
+    const data = await response.json()
+    return {
+      videoTitle: data.title || "Untitled Video",
+      thumbnailUrl: data.thumbnail_url,
+      thumbnailWidth: data.thumbnail_width,
+      thumbnailHeight: data.thumbnail_height,
+      authorName: data.author_name,
+      authorUrl: data.author_url,
+      uploadDate: data.upload_date,
+      html: data.html,
+    }
+  } catch (error) {
+    console.error("Error fetching YouTube details:", error)
+    return {
+      videoTitle: "Untitled Video",
+    }
+  }
+}
+
+function extractPlaylistId(url: string): string | null {
+  const playlistRegex = /[?&]list=([^#\&\?]+)/
+  const match = url.match(playlistRegex)
+  return match ? match[1] : null
+}
+
 export default function Dashboard() {
   const [selectedResource, setSelectedResource] = React.useState<{
     resource: Resource;
@@ -54,6 +93,7 @@ export default function Dashboard() {
   const [view, setView] = React.useState<"resources" | "table">("resources")
   const [resources, setResources] = React.useState<Resource[]>([])
   const [watchedVideos, setWatchedVideos] = React.useState<Set<string>>(new Set())
+  const [sidebarWidth, setSidebarWidth] = React.useState<number>(350)
 
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
@@ -62,14 +102,18 @@ export default function Dashboard() {
   }
 
   React.useEffect(() => {
-    const storedWatched = localStorage.getItem("watchedVideos")
-    if (storedWatched) {
-      setWatchedVideos(new Set(JSON.parse(storedWatched)))
+    if (typeof window !== "undefined") {
+      const storedWidth = localStorage.getItem("sidebarWidth")
+      const storedWatched = localStorage.getItem("watchedVideos")
+      if (storedWidth) setSidebarWidth(parseInt(storedWidth, 10))
+      if (storedWatched) setWatchedVideos(new Set(JSON.parse(storedWatched)))
     }
   }, [])
 
   React.useEffect(() => {
-    localStorage.setItem("watchedVideos", JSON.stringify([...watchedVideos]))
+    if (typeof window !== "undefined") {
+      localStorage.setItem("watchedVideos", JSON.stringify([...watchedVideos]))
+    }
   }, [watchedVideos])
 
   React.useEffect(() => {
@@ -128,7 +172,7 @@ export default function Dashboard() {
     <SidebarProvider
       style={
         {
-          "--sidebar-width": `${localStorage.getItem("sidebarWidth") || 350}px`, // Use stored width or default
+          "--sidebar-width": `${sidebarWidth}px`,
         } as React.CSSProperties
       }
     >
@@ -189,76 +233,82 @@ export default function Dashboard() {
             )
           ) : (
             <div className="w-full overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-gray-100 hover:bg-gray-100">
-                    <TableHead className="font-semibold">Thumbnail</TableHead>
-                    <TableHead className="font-semibold">Title</TableHead>
-                    <TableHead className="font-semibold hidden md:table-cell">Description</TableHead>
-                    <TableHead className="font-semibold hidden lg:table-cell">Link</TableHead>
-                    <TableHead className="font-semibold">Type</TableHead>
-                    <TableHead className="font-semibold hidden md:table-cell">Author</TableHead>
-                    <TableHead className="font-semibold hidden md:table-cell">Date</TableHead>
-                    <TableHead className="font-semibold">Watched</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {resources.map((resource) => (
-                    <TableRow 
-                      key={resource.id}
-                      className={cn(
-                        "cursor-pointer",
-                        selectedResource?.resource.id === resource.id && "bg-gray-700 text-white hover:bg-gray-600",
-                        watchedVideos.has(resource.id) && "bg-pink-100 hover:bg-pink-200"
-                      )}
-                      onClick={() => handleResourceSelect(resource)}
-                    >
-                      <TableCell>
-                        {resource.thumbnailUrl ? (
-                          <img 
-                            src={resource.thumbnailUrl} 
-                            alt="Thumbnail" 
-                            className="w-16 h-9 object-cover rounded"
-                            width={resource.thumbnailWidth}
-                            height={resource.thumbnailHeight}
-                          />
-                        ) : (
-                          "N/A"
-                        )}
-                      </TableCell>
-                      <TableCell>{resource.videoTitle || resource.Title}</TableCell>
-                      <TableCell className="hidden md:table-cell">{resource.Description}</TableCell>
-                      <TableCell className="hidden lg:table-cell">
-                        <a href={resource.Link} target="_blank" rel="noopener noreferrer" className="underline">{resource.Link}</a>
-                      </TableCell>
-                      <TableCell>{resource.isPlaylist ? "Playlist" : "Video"}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {resource.authorName ? (
-                          <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{resource.authorName}</a>
-                        ) : "Unknown"}
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {new Date(resource.uploadDate || resource.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            toggleWatched(resource.id)
-                          }}
-                          className={cn(
-                            watchedVideos.has(resource.id) && "bg-green-100 text-green-700"
-                          )}
-                        >
-                          {watchedVideos.has(resource.id) ? "Watched" : "Mark Watched"}
-                        </Button>
-                      </TableCell>
+              {resources.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-gray-100 hover:bg-gray-100">
+                      <TableHead className="font-semibold">Thumbnail</TableHead>
+                      <TableHead className="font-semibold">Title</TableHead>
+                      <TableHead className="font-semibold hidden md:table-cell">Description</TableHead>
+                      <TableHead className="font-semibold hidden lg:table-cell">Link</TableHead>
+                      <TableHead className="font-semibold">Type</TableHead>
+                      <TableHead className="font-semibold hidden md:table-cell">Author</TableHead>
+                      <TableHead className="font-semibold hidden md:table-cell">Date</TableHead>
+                      <TableHead className="font-semibold">Watched</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {resources.map((resource) => (
+                      <TableRow 
+                        key={resource.id}
+                        className={cn(
+                          "cursor-pointer",
+                          selectedResource?.resource.id === resource.id && "bg-gray-700 text-white hover:bg-gray-600",
+                          watchedVideos.has(resource.id) && "bg-pink-100 hover:bg-pink-200"
+                        )}
+                        onClick={() => handleResourceSelect(resource)}
+                      >
+                        <TableCell>
+                          {resource.thumbnailUrl ? (
+                            <img 
+                              src={resource.thumbnailUrl} 
+                              alt="Thumbnail" 
+                              className="w-16 h-9 object-cover rounded"
+                              width={resource.thumbnailWidth}
+                              height={resource.thumbnailHeight}
+                            />
+                          ) : (
+                            "N/A"
+                          )}
+                        </TableCell>
+                        <TableCell>{resource.videoTitle || resource.Title}</TableCell>
+                        <TableCell className="hidden md:table-cell">{resource.Description}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <a href={resource.Link} target="_blank" rel="noopener noreferrer" className="underline">{resource.Link}</a>
+                        </TableCell>
+                        <TableCell>{resource.isPlaylist ? "Playlist" : "Video"}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {resource.authorName ? (
+                            <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{resource.authorName}</a>
+                          ) : "Unknown"}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {new Date(resource.uploadDate || resource.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              toggleWatched(resource.id)
+                            }}
+                            className={cn(
+                              watchedVideos.has(resource.id) && "bg-green-100 text-green-700"
+                            )}
+                          >
+                            {watchedVideos.has(resource.id) ? "Watched" : "Mark Watched"}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex h-full items-center justify-center text-muted-foreground">
+                  No resources available
+                </div>
+              )}
             </div>
           )}
         </main>
