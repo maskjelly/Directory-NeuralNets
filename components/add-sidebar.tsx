@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Command, Check, Table as TableIcon } from "lucide-react"
+import { Command, Table as TableIcon } from "lucide-react"
 import { getData } from "@/app/actions/route"
 import { NavUser } from "@/components/nav-user"
 import { Label } from "@/components/ui/label"
@@ -35,14 +35,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 interface Resource {
@@ -54,23 +46,51 @@ interface Resource {
   videoTitle?: string;
   isPlaylist?: boolean;
   playlistId?: string;
+  thumbnailUrl?: string;
+  thumbnailWidth?: number;
+  thumbnailHeight?: number;
+  authorName?: string;
+  authorUrl?: string;
+  uploadDate?: string;
+  html?: string;
 }
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onResourceSelect?: (resource: Resource) => void;
   selectedResourceId?: string | null;
+  onViewChange?: (view: "resources" | "table") => void;
 }
 
-async function fetchYouTubeTitle(url: string): Promise<string> {
+async function fetchYouTubeDetails(url: string): Promise<{
+  videoTitle: string;
+  thumbnailUrl?: string;
+  thumbnailWidth?: number;
+  thumbnailHeight?: number;
+  authorName?: string;
+  authorUrl?: string;
+  uploadDate?: string;
+  html?: string;
+}> {
   try {
     const response = await fetch(
       `https://www.youtube.com/oembed?url=${encodeURIComponent(url)}&format=json`
     )
     const data = await response.json()
-    return data.title || "Untitled Video"
+    return {
+      videoTitle: data.title || "Untitled Video",
+      thumbnailUrl: data.thumbnail_url,
+      thumbnailWidth: data.thumbnail_width,
+      thumbnailHeight: data.thumbnail_height,
+      authorName: data.author_name,
+      authorUrl: data.author_url,
+      uploadDate: data.upload_date,
+      html: data.html,
+    }
   } catch (error) {
-    console.error("Error fetching YouTube title:", error)
-    return "Untitled Video"
+    console.error("Error fetching YouTube details:", error)
+    return {
+      videoTitle: "Untitled Video",
+    }
   }
 }
 
@@ -94,6 +114,7 @@ const navMain = [
 export function AppSidebar({ 
   onResourceSelect, 
   selectedResourceId, 
+  onViewChange,
   ...props 
 }: AppSidebarProps) {
   const [activeItem, setActiveItem] = React.useState(navMain[0])
@@ -102,6 +123,13 @@ export function AppSidebar({
   const [selectedPlaylistLink, setSelectedPlaylistLink] = React.useState<string | null>(null)
   const [watchedVideos, setWatchedVideos] = React.useState<Set<string>>(new Set())
   const { setOpen } = useSidebar()
+  const sidebarRef = React.useRef<HTMLDivElement>(null)
+
+  // Initialize sidebar width from localStorage or default to 350px
+  const [sidebarWidth, setSidebarWidth] = React.useState(() => {
+    const storedWidth = localStorage.getItem("sidebarWidth")
+    return storedWidth ? parseInt(storedWidth, 10) : 350
+  })
 
   React.useEffect(() => {
     const storedWatched = localStorage.getItem("watchedVideos")
@@ -121,20 +149,19 @@ export function AppSidebar({
         const enhancedResources = await Promise.all(
           response.data.map(async (resource) => {
             const playlistId = extractPlaylistId(resource.Link)
-            const videoTitle = await fetchYouTubeTitle(resource.Link)
-            
-            if (playlistId) {
-              return {
-                ...resource,
-                isPlaylist: true,
-                videoTitle,
-                playlistId,
-              }
-            }
+            const ytDetails = await fetchYouTubeDetails(resource.Link)
             return {
               ...resource,
-              isPlaylist: false,
-              videoTitle,
+              isPlaylist: !!playlistId,
+              playlistId: playlistId || undefined,
+              videoTitle: ytDetails.videoTitle,
+              thumbnailUrl: ytDetails.thumbnailUrl,
+              thumbnailWidth: ytDetails.thumbnailWidth,
+              thumbnailHeight: ytDetails.thumbnailHeight,
+              authorName: ytDetails.authorName,
+              authorUrl: ytDetails.authorUrl,
+              uploadDate: ytDetails.uploadDate || resource.createdAt,
+              html: ytDetails.html,
             }
           })
         )
@@ -164,80 +191,109 @@ export function AppSidebar({
     })
   }
 
+  const handleResize = (e: MouseEvent) => {
+    if (sidebarRef.current) {
+      const newWidth = e.clientX;
+      const minWidth = 200;
+      const maxWidth = window.innerWidth * 0.5;
+      const adjustedWidth = Math.max(minWidth, Math.min(newWidth, maxWidth));
+      setSidebarWidth(adjustedWidth);
+      sidebarRef.current.style.width = `${adjustedWidth}px`;
+      document.documentElement.style.setProperty('--sidebar-width', `${adjustedWidth}px`);
+      localStorage.setItem("sidebarWidth", adjustedWidth.toString()); // Persist width
+    }
+  }
+
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    document.addEventListener('mousemove', handleResize);
+    document.addEventListener('mouseup', stopResizing);
+  }
+
+  const stopResizing = () => {
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('mouseup', stopResizing);
+  }
+
   return (
-    <Sidebar
-      collapsible="icon"
-      className="overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
-      {...props}
+    <div 
+      ref={sidebarRef} 
+      className="relative flex flex-col h-screen border-r transition-width duration-100"
+      style={{ width: `${sidebarWidth}px`, minWidth: '200px', maxWidth: '50vw' }}
     >
       <Sidebar
-        collapsible="none"
-        className="!w-[calc(var(--sidebar-width-icon)_+_1px)] border-r"
+        collapsible="icon"
+        className="flex-1 overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
+        {...props}
       >
-        <SidebarHeader>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
-                <a href="#">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <Command className="size-4" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">Resource Dir</span>
-                    <span className="truncate text-xs">Directory</span>
-                  </div>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupContent className="px-1.5 md:px-0">
-              <SidebarMenu>
-                {navMain.map((item) => (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton
-                      tooltip={{ children: item.title, hidden: false }}
-                      onClick={() => {
-                        setActiveItem(item)
-                        setOpen(true)
-                      }}
-                      isActive={activeItem.title === item.title}
-                      className="px-2.5 md:px-2"
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter>
-          <NavUser user={user} />
-        </SidebarFooter>
-      </Sidebar>
+        <Sidebar
+          collapsible="none"
+          className="!w-[calc(var(--sidebar-width-icon)_+_1px)] border-r"
+        >
+          <SidebarHeader>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
+                  <a href="#">
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                      <Command className="size-4" />
+                    </div>
+                    <div className="grid flex-1 text-left text-sm leading-tight">
+                      <span className="truncate font-semibold">Resource Dir</span>
+                      <span className="truncate text-xs">Directory</span>
+                    </div>
+                  </a>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupContent className="px-1.5 md:px-0">
+                <SidebarMenu>
+                  {navMain.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        tooltip={{ children: item.title, hidden: false }}
+                        onClick={() => {
+                          setActiveItem(item)
+                          setOpen(true)
+                          onViewChange?.(item.title === "All Resources" ? "resources" : "table")
+                        }}
+                        isActive={activeItem.title === item.title}
+                        className="px-2.5 md:px-2"
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>
+            <NavUser user={user} />
+          </SidebarFooter>
+        </Sidebar>
 
-      <Sidebar collapsible="none" className="hidden flex-1 md:flex">
-        <SidebarHeader className="gap-3.5 border-b p-4">
-          <div className="flex w-full items-center justify-between">
-            <div className="text-base font-medium text-foreground">
-              {activeItem.title}
+        <Sidebar collapsible="none" className="hidden flex-1 md:flex">
+          <SidebarHeader className="gap-3.5 border-b p-4">
+            <div className="flex w-full items-center justify-between">
+              <div className="text-base font-medium text-foreground">
+                {activeItem.title}
+              </div>
+              <Label className="flex items-center gap-2 text-sm">
+                <span>Filter</span>
+                <Switch className="shadow-none" />
+              </Label>
             </div>
-            <Label className="flex items-center gap-2 text-sm">
-              <span>Filter</span>
-              <Switch className="shadow-none" />
-            </Label>
-          </div>
-          <SidebarInput placeholder="Search resources..." />
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup className="px-0">
-            <SidebarGroupContent>
-              {activeItem.title === "All Resources" ? (
-                resources.map((resource) => (
+            <SidebarInput placeholder="Search resources..." />
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup className="px-0">
+              <SidebarGroupContent>
+                {activeItem.title === "All Resources" && resources.map((resource) => (
                   resource.isPlaylist ? (
                     <Accordion type="single" collapsible key={resource.id}>
                       <AccordionItem value={resource.id}>
@@ -250,30 +306,42 @@ export function AppSidebar({
                           onClick={() => handlePlaylistClick(resource)}
                         >
                           <div className="flex w-full items-center gap-2 flex-wrap">
-                            <span className="break-words max-w-[200px]">
+                            {resource.thumbnailUrl && (
+                              <img 
+                                src={resource.thumbnailUrl} 
+                                alt="Thumbnail" 
+                                className="w-12 h-12 object-cover rounded"
+                                width={resource.thumbnailWidth}
+                                height={resource.thumbnailHeight}
+                              />
+                            )}
+                            <span className="break-words max-w-[150px] md:max-w-[200px]">
                               {resource.videoTitle || resource.Title}
                             </span>
                             <span className="ml-auto text-xs shrink-0">
-                              {new Date(resource.createdAt).toLocaleDateString()}
+                              {new Date(resource.uploadDate || resource.createdAt).toLocaleDateString()}
                             </span>
                           </div>
                           <span className="break-words max-w-[260px] text-xs">
                             {resource.Description}
                           </span>
+                          {resource.authorName && (
+                            <span className="text-xs text-muted-foreground">
+                              By: <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{resource.authorName}</a>
+                            </span>
+                          )}
                         </AccordionTrigger>
                         <AccordionContent>
-                          <div className="px-4 py-2 text-sm break-words max-w-[260px] flex items-center gap-2">
-                            <span>Link: {resource.Link}</span>
+                          <div className="px-4 py-2 text-sm break-words max-w-[260px] flex flex-col gap-2">
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
                               onClick={() => toggleWatched(resource.id)}
                               className={cn(
-                                "p-1",
-                                watchedVideos.has(resource.id) && "text-green-500"
+                                watchedVideos.has(resource.id) && "bg-green-100 text-green-700"
                               )}
                             >
-                              <Check className="h-4 w-4" />
+                              {watchedVideos.has(resource.id) ? "Watched" : "Mark Watched"}
                             </Button>
                           </div>
                         </AccordionContent>
@@ -294,86 +362,58 @@ export function AppSidebar({
                       }}
                     >
                       <div className="flex w-full items-center gap-2 flex-wrap">
-                        <span className="break-words max-w-[200px]">
+                        {resource.thumbnailUrl && (
+                          <img 
+                            src={resource.thumbnailUrl} 
+                            alt="Thumbnail" 
+                            className="w-12 h-12 object-cover rounded"
+                            width={resource.thumbnailWidth}
+                            height={resource.thumbnailHeight}
+                          />
+                        )}
+                        <span className="break-words max-w-[150px] md:max-w-[200px]">
                           {resource.videoTitle || resource.Title}
                         </span>
                         <span className="ml-auto text-xs shrink-0">
-                          {new Date(resource.createdAt).toLocaleDateString()}
+                          {new Date(resource.uploadDate || resource.createdAt).toLocaleDateString()}
                         </span>
                       </div>
                       <span className="break-words max-w-[260px] text-xs">
                         {resource.Description}
                       </span>
+                      {resource.authorName && (
+                        <span className="text-xs text-muted-foreground">
+                          By: <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{resource.authorName}</a>
+                        </span>
+                      )}
                       <div className="break-words max-w-[260px] text-xs flex items-center gap-2">
-                        <span>Link: {resource.Link}</span>
                         <Button
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation()
                             toggleWatched(resource.id)
                           }}
                           className={cn(
-                            "p-1",
-                            watchedVideos.has(resource.id) && "text-green-500"
+                            watchedVideos.has(resource.id) && "bg-green-100 text-green-700"
                           )}
                         >
-                          <Check className="h-4 w-4" />
+                          {watchedVideos.has(resource.id) ? "Watched" : "Mark Watched"}
                         </Button>
                       </div>
                     </a>
                   )
-                ))
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Link</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Watched</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {resources.map((resource) => (
-                      <TableRow 
-                        key={resource.id}
-                        className={cn(
-                          selectedResourceId === resource.id && "bg-gray-700 text-white",
-                          watchedVideos.has(resource.id) && "bg-pink-100"
-                        )}
-                        onClick={() => handlePlaylistClick(resource)}
-                      >
-                        <TableCell>{resource.videoTitle || resource.Title}</TableCell>
-                        <TableCell>{resource.Description}</TableCell>
-                        <TableCell className="truncate max-w-[200px]">{resource.Link}</TableCell>
-                        <TableCell>{resource.isPlaylist ? "Playlist" : "Video"}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleWatched(resource.id)
-                            }}
-                            className={cn(
-                              "p-1",
-                              watchedVideos.has(resource.id) && "text-green-500"
-                            )}
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
+                ))}
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+        </Sidebar>
       </Sidebar>
+
+      <div
+        className="absolute top-0 right-0 w-2 h-full bg-gray-300 cursor-col-resize hover:bg-gray-400"
+        onMouseDown={startResizing}
+      />
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
         <DialogContent>
@@ -395,6 +435,6 @@ export function AppSidebar({
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Sidebar>
+    </div>
   )
 }
