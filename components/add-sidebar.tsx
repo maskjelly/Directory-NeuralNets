@@ -226,18 +226,7 @@ export function AppSidebar({
   };
 
   return (
-    <div
-      // ref={sidebarRef}
-      // className={cn(
-      //   "relative flex flex-col h-screen border-r transition-width duration-100",
-      //   !open && "w-[var(--sidebar-width-icon)]"
-      // )}
-      // style={{
-      //   width: open ? `${sidebarWidth}px` : undefined,
-      //   minWidth: open ? "700px" : "60px",
-      //   maxWidth: "50vw",
-      // }}
-    >
+    <div>
       <Sidebar
         collapsible="icon"
         className="flex-1 overflow-hidden [&>[data-sidebar=sidebar]]:flex-row"
@@ -250,7 +239,7 @@ export function AppSidebar({
           <SidebarHeader>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0">
+                <SidebarMenuButton asChild className="md:h-8 md:p-0">
                   <a href="#">
                     <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                       <Command className="size-4" />
