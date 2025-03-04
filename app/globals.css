@@ -1,172 +1,95 @@
 /* Import Tailwind base styles */
 @import "tailwindcss";
 
-/* Define base custom properties in :root */
+/* Soft UI Design Variables */
 :root {
-  /* Light mode defaults could go here if needed */
+  --radius: 12px;
+  --soft-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --soft-inset: inset 2px 2px 6px rgba(0, 0, 0, 0.15), inset -2px -2px 6px rgba(255, 255, 255, 0.08);
+  --soft-glow: 0px 0px 12px rgba(255, 255, 255, 0.1);
 }
 
-/* Dark mode overrides using the .dark class */
-.dark {
-  --color-background: 240 10% 3.9%;
-  --color-foreground: 0 0% 98%;
-  --color-card: 240 10% 3.9%;
-  --color-card-foreground: 0 0% 98%;
-  --color-popover: 240 10% 3.9%;
-  --color-popover-foreground: 0 0% 98%;
-  --color-primary: 0 0% 98%;
-  --color-primary-foreground: 240 5.9% 10%;
-  --color-secondary: 240 3.7% 15.9%;
-  --color-secondary-foreground: 0 0% 98%;
-  --color-muted: 240 3.7% 15.9%;
-  --color-muted-foreground: 240 5% 64.9%;
-  --color-accent: 240 3.7% 15.9%;
-  --color-accent-foreground: 0 0% 98%;
-  --color-destructive: 0 62.8% 30.6%;
-  --color-destructive-foreground: 0 0% 98%;
-  --color-border: 240 3.7% 15.9%;
-  --color-input: 240 3.7% 15.9%;
-  --color-ring: 240 4.9% 83.9%;
-  --color-sidebar-primary: 0 0% 98%;
-  --color-sidebar-primary-foreground: 240 5.9% 10%;
-  --color-sidebar-accent: 240 3.7% 15.9%;
-  --color-sidebar-accent-foreground: 0 0% 98%;
-  --color-watched: 142.1 70.6% 45.3%;
-  --color-watched-foreground: 0 0% 98%;
-  --color-selected: 262.1 83.3% 57.8%;
-  --color-selected-foreground: 0 0% 98%;
+/* Global styles */
+body {
+  @apply bg-background text-foreground antialiased;
 }
 
-/* @theme block for Tailwind to register custom properties */
-@theme {
-  /* Register custom properties for Tailwind utilities */
-  --color-background: 240 10% 3.9%; /* Default value, overridden by .dark if needed */
-  --color-foreground: 0 0% 98%;
-  --color-card: 240 10% 3.9%;
-  --color-card-foreground: 0 0% 98%;
-  --color-popover: 240 10% 3.9%;
-  --color-popover-foreground: 0 0% 98%;
-  --color-primary: 0 0% 98%;
-  --color-primary-foreground: 240 5.9% 10%;
-  --color-secondary: 240 3.7% 15.9%;
-  --color-secondary-foreground: 0 0% 98%;
-  --color-muted: 240 3.7% 15.9%;
-  --color-muted-foreground: 240 5% 64.9%;
-  --color-accent: 240 3.7% 15.9%;
-  --color-accent-foreground: 0 0% 98%;
-  --color-destructive: 0 62.8% 30.6%;
-  --color-destructive-foreground: 0 0% 98%;
-  --color-border: 240 3.7% 15.9%;
-  --color-input: 240 3.7% 15.9%;
-  --color-ring: 240 4.9% 83.9%;
-  --color-sidebar-primary: 0 0% 98%;
-  --color-sidebar-primary-foreground: 240 5.9% 10%;
-  --color-sidebar-accent: 240 3.7% 15.9%;
-  --color-sidebar-accent-foreground: 0 0% 98%;
-  --color-watched: 142.1 70.6% 45.3%;
-  --color-watched-foreground: 0 0% 98%;
-  --color-selected: 262.1 83.3% 57.8%;
-  --color-selected-foreground: 0 0% 98%;
-
-  /* Keyframes can also go here if needed */
-  --accordion-down: accordion-down;
-  --accordion-up: accordion-up;
+/* Soft background and blur effects */
+.bg-soft {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border-radius: var(--radius);
+  box-shadow: var(--soft-shadow);
 }
 
-/* Rest of your styles remain unchanged */
-.gradient-background {
-  background-image: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/gradii-1920x1080%20%281%29-fbshqErr70fXlaKqATSjGUd5lnCEp4.png");
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
-  filter: blur(20px) brightness(0.3);
-}
-
-.dark .gradient-background {
-  filter: blur(20px) brightness(0.2);
-}
-
-.glass-effect {
+/* Soft Card Component */
+.card {
+  @apply transition-all duration-300 rounded-xl;
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: var(--soft-shadow);
+  border-radius: var(--radius);
 }
 
-.dark .glass-effect {
-  background: rgba(0, 0, 0, 0.2);
+.card:hover {
+  box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+/* Input fields */
+.input-field {
+  background: linear-gradient(180deg, hsl(240 10% 5%) 0%, hsl(240 10% 3%) 100%);
+  box-shadow: var(--soft-inset);
+  border-radius: var(--radius);
+  padding: 12px 16px;
 }
 
-.resource-card {
-  @apply transition-all duration-200 hover:shadow-md;
+.input-field:focus {
+  box-shadow: var(--soft-glow);
 }
 
-.resource-card.watched {
-  @apply bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-100;
+/* Buttons */
+.btn {
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  transition: all 0.3s ease-in-out;
+  box-shadow: var(--soft-shadow);
 }
 
-.resource-card.selected {
-  @apply bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-100;
+.btn:hover {
+  box-shadow: 0px 4px 16px rgba(0, 0, 0, 0.15);
 }
 
-.dark .text-muted-foreground {
-  color: hsl(240 5% 84.9%);
+/* Soft Table Rows */
+.table-row {
+  transition: background 0.2s;
+  border-radius: var(--radius);
 }
 
-.dark .bg-muted {
-  background-color: hsl(240 3.7% 15.9%);
+.table-row:hover {
+  background: rgba(255, 255, 255, 0.07);
 }
 
-.dark .btn-outline {
-  border-color: hsl(240 5% 64.9%);
-  color: hsl(0 0% 98%);
+/* Dark Mode */
+.dark {
+  --soft-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
+  --soft-inset: inset 2px 2px 6px rgba(255, 255, 255, 0.1), inset -2px -2px 6px rgba(0, 0, 0, 0.2);
+  --soft-glow: 0px 0px 12px rgba(255, 255, 255, 0.15);
 }
 
-.dark .btn-outline:hover {
-  background-color: hsl(240 3.7% 15.9%);
-  color: hsl(0 0% 98%);
+.dark .bg-soft {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.dark .card {
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: var(--soft-shadow);
+}
+
+.dark .input-field {
+  background: linear-gradient(180deg, hsl(240 10% 8%) 0%, hsl(240 10% 5%) 100%);
+  box-shadow: var(--soft-inset);
 }
 
 .dark .table-row:hover {
-  background-color: hsl(240 3.7% 15.9%);
-}
-
-@keyframes accordion-down {
-  from {
-    height: 0;
-  }
-  to {
-    height: var(--radix-accordion-content-height);
-  }
-}
-
-@keyframes accordion-up {
-  from {
-    height: var(--radix-accordion-content-height);
-  }
-  to {
-    height: 0;
-  }
-}
-
-.animate-accordion-down {
-  animation: accordion-down 0.2s ease-out;
-}
-
-.animate-accordion-up {
-  animation: accordion-up 0.2s ease-out;
+  background: rgba(255, 255, 255, 0.05);
 }
