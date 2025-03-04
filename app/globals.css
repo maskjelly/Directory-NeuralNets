@@ -4,41 +4,41 @@
   /* Light mode variables */
   --color-background: 0 0% 100%;
   --color-foreground: 240 10% 3.9%;
-  
+
   --color-card: 0 0% 100%;
   --color-card-foreground: 240 10% 3.9%;
-  
+
   --color-popover: 0 0% 100%;
   --color-popover-foreground: 240 10% 3.9%;
-  
+
   --color-primary: 240 5.9% 10%;
   --color-primary-foreground: 0 0% 98%;
-  
+
   --color-secondary: 240 4.8% 95.9%;
   --color-secondary-foreground: 240 5.9% 10%;
-  
+
   --color-muted: 240 4.8% 95.9%;
   --color-muted-foreground: 240 3.8% 46.1%;
-  
+
   --color-accent: 240 4.8% 95.9%;
   --color-accent-foreground: 240 5.9% 10%;
-  
+
   --color-destructive: 0 84.2% 60.2%;
   --color-destructive-foreground: 0 0% 98%;
-  
+
   --color-border: 240 5.9% 90%;
   --color-input: 240 5.9% 90%;
   --color-ring: 240 5.9% 10%;
-  
+
   --radius: 0.75rem;
   --sidebar-width: 350px;
   --sidebar-width-icon: 60px;
-  
+
   --color-sidebar-primary: 240 5.9% 10%;
   --color-sidebar-primary-foreground: 0 0% 98%;
   --color-sidebar-accent: 240 4.8% 95.9%;
   --color-sidebar-accent-foreground: 240 5.9% 10%;
-  
+
   --color-watched: 142.1 76.2% 36.3%;
   --color-watched-foreground: 355.7 100% 97.3%;
   --color-selected: 262.1 83.3% 57.8%;
@@ -48,42 +48,72 @@
   @dark {
     --color-background: 240 10% 3.9%;
     --color-foreground: 0 0% 98%;
-    
+
     --color-card: 240 10% 3.9%;
     --color-card-foreground: 0 0% 98%;
-    
+
     --color-popover: 240 10% 3.9%;
     --color-popover-foreground: 0 0% 98%;
-    
+
     --color-primary: 0 0% 98%;
     --color-primary-foreground: 240 5.9% 10%;
-    
+
     --color-secondary: 240 3.7% 15.9%;
     --color-secondary-foreground: 0 0% 98%;
-    
+
     --color-muted: 240 3.7% 15.9%;
     --color-muted-foreground: 240 5% 64.9%;
-    
+
     --color-accent: 240 3.7% 15.9%;
     --color-accent-foreground: 0 0% 98%;
-    
+
     --color-destructive: 0 62.8% 30.6%;
     --color-destructive-foreground: 0 0% 98%;
-    
+
     --color-border: 240 3.7% 15.9%;
     --color-input: 240 3.7% 15.9%;
     --color-ring: 240 4.9% 83.9%;
-    
+
     --color-sidebar-primary: 0 0% 98%;
     --color-sidebar-primary-foreground: 240 5.9% 10%;
     --color-sidebar-accent: 240 3.7% 15.9%;
     --color-sidebar-accent-foreground: 0 0% 98%;
-    
+
     --color-watched: 142.1 70.6% 45.3%;
     --color-watched-foreground: 0 0% 98%;
     --color-selected: 262.1 83.3% 57.8%;
     --color-selected-foreground: 0 0% 98%;
   }
+}
+
+/* Add gradient background */
+.gradient-background {
+  background-image: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/gradii-1920x1080%20%281%29-fbshqErr70fXlaKqATSjGUd5lnCEp4.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  filter: blur(20px) brightness(0.7);
+}
+
+.dark .gradient-background {
+  filter: blur(20px) brightness(0.4);
+}
+
+/* Add glass effect for components */
+.glass-effect {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dark .glass-effect {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 @layer base {
@@ -134,13 +164,21 @@
 
 /* Animation keyframes */
 @keyframes accordion-down {
-  from { height: 0; }
-  to { height: var(--radix-accordion-content-height); }
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
 }
 
 @keyframes accordion-up {
-  from { height: var(--radix-accordion-content-height); }
-  to { height: 0; }
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
 }
 
 .animate-accordion-down {
@@ -150,3 +188,4 @@
 .animate-accordion-up {
   animation: accordion-up 0.2s ease-out;
 }
+
