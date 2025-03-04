@@ -1,49 +1,79 @@
+/* Import Tailwind base styles */
 @import "tailwindcss";
 
-@theme {
-  /* Dark mode overrides */
-  @dark {
-    --color-background: 240 10% 3.9%;
-    --color-foreground: 0 0% 98%;
-
-    --color-card: 240 10% 3.9%;
-    --color-card-foreground: 0 0% 98%;
-
-    --color-popover: 240 10% 3.9%;
-    --color-popover-foreground: 0 0% 98%;
-
-    --color-primary: 0 0% 98%;
-    --color-primary-foreground: 240 5.9% 10%;
-
-    --color-secondary: 240 3.7% 15.9%;
-    --color-secondary-foreground: 0 0% 98%;
-
-    --color-muted: 240 3.7% 15.9%;
-    --color-muted-foreground: 240 5% 64.9%;
-
-    --color-accent: 240 3.7% 15.9%;
-    --color-accent-foreground: 0 0% 98%;
-
-    --color-destructive: 0 62.8% 30.6%;
-    --color-destructive-foreground: 0 0% 98%;
-
-    --color-border: 240 3.7% 15.9%;
-    --color-input: 240 3.7% 15.9%;
-    --color-ring: 240 4.9% 83.9%;
-
-    --color-sidebar-primary: 0 0% 98%;
-    --color-sidebar-primary-foreground: 240 5.9% 10%;
-    --color-sidebar-accent: 240 3.7% 15.9%;
-    --color-sidebar-accent-foreground: 0 0% 98%;
-
-    --color-watched: 142.1 70.6% 45.3%;
-    --color-watched-foreground: 0 0% 98%;
-    --color-selected: 262.1 83.3% 57.8%;
-    --color-selected-foreground: 0 0% 98%;
-  }
+/* Define base custom properties in :root */
+:root {
+  /* Light mode defaults could go here if needed */
 }
 
-/* Add gradient background */
+/* Dark mode overrides using the .dark class */
+.dark {
+  --color-background: 240 10% 3.9%;
+  --color-foreground: 0 0% 98%;
+  --color-card: 240 10% 3.9%;
+  --color-card-foreground: 0 0% 98%;
+  --color-popover: 240 10% 3.9%;
+  --color-popover-foreground: 0 0% 98%;
+  --color-primary: 0 0% 98%;
+  --color-primary-foreground: 240 5.9% 10%;
+  --color-secondary: 240 3.7% 15.9%;
+  --color-secondary-foreground: 0 0% 98%;
+  --color-muted: 240 3.7% 15.9%;
+  --color-muted-foreground: 240 5% 64.9%;
+  --color-accent: 240 3.7% 15.9%;
+  --color-accent-foreground: 0 0% 98%;
+  --color-destructive: 0 62.8% 30.6%;
+  --color-destructive-foreground: 0 0% 98%;
+  --color-border: 240 3.7% 15.9%;
+  --color-input: 240 3.7% 15.9%;
+  --color-ring: 240 4.9% 83.9%;
+  --color-sidebar-primary: 0 0% 98%;
+  --color-sidebar-primary-foreground: 240 5.9% 10%;
+  --color-sidebar-accent: 240 3.7% 15.9%;
+  --color-sidebar-accent-foreground: 0 0% 98%;
+  --color-watched: 142.1 70.6% 45.3%;
+  --color-watched-foreground: 0 0% 98%;
+  --color-selected: 262.1 83.3% 57.8%;
+  --color-selected-foreground: 0 0% 98%;
+}
+
+/* @theme block for Tailwind to register custom properties */
+@theme {
+  /* Register custom properties for Tailwind utilities */
+  --color-background: 240 10% 3.9%; /* Default value, overridden by .dark if needed */
+  --color-foreground: 0 0% 98%;
+  --color-card: 240 10% 3.9%;
+  --color-card-foreground: 0 0% 98%;
+  --color-popover: 240 10% 3.9%;
+  --color-popover-foreground: 0 0% 98%;
+  --color-primary: 0 0% 98%;
+  --color-primary-foreground: 240 5.9% 10%;
+  --color-secondary: 240 3.7% 15.9%;
+  --color-secondary-foreground: 0 0% 98%;
+  --color-muted: 240 3.7% 15.9%;
+  --color-muted-foreground: 240 5% 64.9%;
+  --color-accent: 240 3.7% 15.9%;
+  --color-accent-foreground: 0 0% 98%;
+  --color-destructive: 0 62.8% 30.6%;
+  --color-destructive-foreground: 0 0% 98%;
+  --color-border: 240 3.7% 15.9%;
+  --color-input: 240 3.7% 15.9%;
+  --color-ring: 240 4.9% 83.9%;
+  --color-sidebar-primary: 0 0% 98%;
+  --color-sidebar-primary-foreground: 240 5.9% 10%;
+  --color-sidebar-accent: 240 3.7% 15.9%;
+  --color-sidebar-accent-foreground: 0 0% 98%;
+  --color-watched: 142.1 70.6% 45.3%;
+  --color-watched-foreground: 0 0% 98%;
+  --color-selected: 262.1 83.3% 57.8%;
+  --color-selected-foreground: 0 0% 98%;
+
+  /* Keyframes can also go here if needed */
+  --accordion-down: accordion-down;
+  --accordion-up: accordion-up;
+}
+
+/* Rest of your styles remain unchanged */
 .gradient-background {
   background-image: url("https://hebbkx1anhila5yf.public.blob.vercel-storage.com/gradii-1920x1080%20%281%29-fbshqErr70fXlaKqATSjGUd5lnCEp4.png");
   background-size: cover;
@@ -55,14 +85,13 @@
   width: 100%;
   height: 100%;
   z-index: -1;
-  filter: blur(20px) brightness(0.7);
+  filter: blur(20px) brightness(0.3);
 }
 
 .dark .gradient-background {
-  filter: blur(20px) brightness(0.4);
+  filter: blur(20px) brightness(0.2);
 }
 
-/* Add glass effect for components */
 .glass-effect {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(12px);
@@ -94,7 +123,6 @@
   @apply bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-100;
 }
 
-/* Ensure text is visible in dark mode */
 .dark .text-muted-foreground {
   color: hsl(240 5% 84.9%);
 }
@@ -103,7 +131,6 @@
   background-color: hsl(240 3.7% 15.9%);
 }
 
-/* Ensure buttons have proper contrast in dark mode */
 .dark .btn-outline {
   border-color: hsl(240 5% 64.9%);
   color: hsl(0 0% 98%);
@@ -114,12 +141,10 @@
   color: hsl(0 0% 98%);
 }
 
-/* Ensure table rows have proper contrast in dark mode */
 .dark .table-row:hover {
   background-color: hsl(240 3.7% 15.9%);
 }
 
-/* Animation keyframes */
 @keyframes accordion-down {
   from {
     height: 0;
@@ -145,4 +170,3 @@
 .animate-accordion-up {
   animation: accordion-up 0.2s ease-out;
 }
-
