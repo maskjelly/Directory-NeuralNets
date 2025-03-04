@@ -1,8 +1,7 @@
-// add-sidebar.tsx
 "use client";
 
 import * as React from "react";
-import { Command, Table as TableIcon } from "lucide-react";
+import { Command, TableIcon, BookmarkCheck, Bookmark } from 'lucide-react';
 import { getData } from "@/app/actions/route";
 import { NavUser } from "@/components/nav-user";
 import { Label } from "@/components/ui/label";
@@ -36,6 +35,10 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Resource {
   id: string;
@@ -113,6 +116,8 @@ const navMain = [
   { title: "Table", url: "#", icon: TableIcon, isActive: false },
 ];
 
+const SKELETON_COUNT = 5;
+
 export function AppSidebar({
   onResourceSelect,
   selectedResourceId,
@@ -131,6 +136,15 @@ export function AppSidebar({
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(350);
   const { open, setOpen } = useSidebar();
   const sidebarRef = React.useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [totalResources, setTotalResources] = React.useState(0);
+  const [fetchedCount, setFetchedCount] = React.useState(0);
+  const [page, setPage] = React.useState(1);
+  const [hasMore, setHasMore] = React.useState(true);
+  const observer = React.useRef<IntersectionObserver | null>(null);
+  const loadingRef = React.useRef<HTMLDivElement>(null);
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [showWatchedOnly, setShowWatchedOnly] = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window !== "undefined") {
@@ -147,8 +161,9 @@ export function AppSidebar({
     }
   }, [watchedVideos]);
 
-  React.useEffect(() => {
-    async function fetchResourcesAndDetails() {
+  const fetchResourcesAndDetails = React.useCallback(async () => {
+    setLoading(true);
+    try {
       const response = await getData();
       if (response.success) {
         const enhancedResources = await Promise.all(
@@ -170,11 +185,46 @@ export function AppSidebar({
             };
           })
         );
-        setResources(enhancedResources);
+        setResources((prevResources) => [...prevResources, ...enhancedResources]);
+        setTotalResources(enhancedResources.length); // Assuming all resources are returned at once
+        setFetchedCount((prevCount) => prevCount + enhancedResources.length);
+        setHasMore(false); // Assuming all resources are fetched at once
+      } else {
+        console.error("Failed to fetch resources");
+        setHasMore(false);
       }
+    } catch (error) {
+      console.error("Error fetching resources:", error);
+      setHasMore(false);
+    } finally {
+      setLoading(false);
     }
-    fetchResourcesAndDetails();
   }, []);
+
+  React.useEffect(() => {
+    fetchResourcesAndDetails();
+  }, [fetchResourcesAndDetails]);
+
+  React.useEffect(() => {
+    observer.current = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (loadingRef.current) {
+      observer.current.observe(loadingRef.current);
+    }
+
+    return () => {
+      if (observer.current) {
+        observer.current.disconnect();
+      }
+    };
+  }, [hasMore, loading]);
 
   const handlePlaylistClick = (resource: Resource) => {
     if (resource.isPlaylist) {
@@ -225,6 +275,18 @@ export function AppSidebar({
     document.removeEventListener("mouseup", stopResizing);
   };
 
+  const filteredResources = resources.filter(resource => {
+    const matchesSearch = searchTerm === "" || 
+      resource.Title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      resource.Description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (resource.videoTitle && resource.videoTitle.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (resource.authorName && resource.authorName.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesWatched = !showWatchedOnly || watchedVideos.has(resource.id);
+    
+    return matchesSearch && matchesWatched;
+  });
+
   return (
     <div>
       <Sidebar
@@ -241,14 +303,14 @@ export function AppSidebar({
               <SidebarMenuItem>
                 <SidebarMenuButton asChild className="md:h-8 md:p-0">
                   <a href="#">
-                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                       <Command className="size-4" />
                     </div>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">
+                      <span className="truncate font-semibold text-foreground">
                         Resource Dir
                       </span>
-                      <span className="truncate text-xs">Directory</span>
+                      <span className="truncate text-xs text-muted-foreground">Directory</span>
                     </div>
                   </a>
                 </SidebarMenuButton>
@@ -273,7 +335,7 @@ export function AppSidebar({
                           );
                         }}
                         isActive={activeItem.title === item.title}
-                        className="px-2.5 md:px-2"
+                        className="px-2.5 md:px-2 text-foreground"
                       >
                         <item.icon />
                         <span>{item.title}</span>
@@ -284,7 +346,8 @@ export function AppSidebar({
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
-          <SidebarFooter>
+          <SidebarFooter className="flex flex-col gap-2 p-2">
+            <ThemeToggle />
             <NavUser user={user} />
           </SidebarFooter>
         </Sidebar>
@@ -292,186 +355,278 @@ export function AppSidebar({
         <Sidebar
           collapsible="none"
           className={cn("hidden flex-1 md:flex", !open && "hidden")}
+          ref={sidebarRef}
         >
           <SidebarHeader className="gap-3.5 border-b p-4">
             <div className="flex w-full items-center justify-between">
               <div className="text-base font-medium text-foreground">
                 {activeItem.title}
               </div>
-              <Label className="flex items-center gap-2 text-sm">
-                <span>Filter</span>
-                <Switch className="shadow-none" />
-              </Label>
+              <div className="flex items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-2">
+                        <Switch 
+                          id="watched-filter"
+                          checked={showWatchedOnly}
+                          onCheckedChange={setShowWatchedOnly}
+                          className="shadow-none"
+                        />
+                        <Label htmlFor="watched-filter" className="text-sm cursor-pointer text-foreground">
+                          Watched
+                        </Label>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Show only watched resources</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
-            <SidebarInput placeholder="Search resources..." />
+            <SidebarInput 
+              placeholder="Search resources..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="text-foreground placeholder:text-muted-foreground"
+            />
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup className="px-0">
               <SidebarGroupContent>
                 {activeItem.title === "All Resources" &&
-                  resources.map((resource) =>
-                    resource.isPlaylist ? (
-                      <Accordion type="single" collapsible key={resource.id}>
-                        <AccordionItem value={resource.id}>
-                          <AccordionTrigger
-                            className={cn(
-                              "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                              selectedResourceId === resource.id &&
-                                "bg-gray-700 text-white",
-                              watchedVideos.has(resource.id) && "bg-pink-100"
-                            )}
-                            onClick={() => handlePlaylistClick(resource)}
+                  (loading
+                    ? Array(SKELETON_COUNT)
+                        .fill(null)
+                        .map((_, i) => (
+                          <div
+                            key={`skeleton-${i}`}
+                            className="flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0"
                           >
-                            <div className="flex w-full items-center gap-2 flex-wrap">
-                              {resource.thumbnailUrl && (
-                                <img
-                                  src={resource.thumbnailUrl}
-                                  alt="Thumbnail"
-                                  className="w-12 h-12 object-cover rounded"
-                                  width={resource.thumbnailWidth}
-                                  height={resource.thumbnailHeight}
-                                />
-                              )}
-                              <span className="break-words max-w-[150px] md:max-w-[200px]">
-                                {resource.videoTitle || resource.Title}
-                              </span>
-                              <span className="ml-auto text-xs shrink-0">
-                                {new Date(
-                                  resource.uploadDate || resource.createdAt
-                                ).toLocaleDateString()}
-                              </span>
+                            <div className="flex w-full items-center gap-2">
+                              <Skeleton className="w-12 h-12 rounded-lg" />
+                              <Skeleton className="h-4 w-[150px]" />
+                              <Skeleton className="h-4 w-[50px] ml-auto" />
                             </div>
-                            <span className="break-words max-w-[260px] text-xs">
-                              {resource.Description}
-                            </span>
-                            {resource.authorName && (
-                              <div className="text-xs text-muted-foreground">
-                                By:{" "}
-                                <a
-                                  href={resource.authorUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="underline"
-                                >
-                                  {resource.authorName}
-                                </a>
-                              </div>
-                            )}
-                          </AccordionTrigger>
-                          <AccordionContent>
-                            <div className="px-4 py-2 text-sm break-words max-w-[260px] flex flex-col gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => toggleWatched(resource.id)}
-                                className={cn(
-                                  watchedVideos.has(resource.id) &&
-                                    "bg-green-100 text-green-700"
-                                )}
-                              >
-                                {watchedVideos.has(resource.id)
-                                  ? "Watched"
-                                  : "Mark Watched"}
-                              </Button>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    ) : (
-                      <div
-                        key={resource.id}
-                        className={cn(
-                          "flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground cursor-pointer",
-                          selectedResourceId === resource.id &&
-                            "bg-gray-700 text-white",
-                          watchedVideos.has(resource.id) && "bg-pink-100"
-                        )}
-                        onClick={() => handlePlaylistClick(resource)}
-                      >
-                        <div className="flex w-full items-center gap-2 flex-wrap">
-                          {resource.thumbnailUrl && (
-                            <img
-                              src={resource.thumbnailUrl}
-                              alt="Thumbnail"
-                              className="w-12 h-12 object-cover rounded"
-                              width={resource.thumbnailWidth}
-                              height={resource.thumbnailHeight}
-                            />
-                          )}
-                          <span className="break-words max-w-[150px] md:max-w-[200px]">
-                            {resource.videoTitle || resource.Title}
-                          </span>
-                          <span className="ml-auto text-xs shrink-0">
-                            {new Date(
-                              resource.uploadDate || resource.createdAt
-                            ).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <span className="break-words max-w-[260px] text-xs">
-                          {resource.Description}
-                        </span>
-                        {resource.authorName && (
-                          <div className="text-xs text-muted-foreground">
-                            By:{" "}
-                            <a
-                              href={resource.authorUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="underline"
-                            >
-                              {resource.authorName}
-                            </a>
+                            <Skeleton className="h-4 w-[200px]" />
                           </div>
-                        )}
-                        <div className="break-words max-w-[260px] text-xs flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleWatched(resource.id);
-                            }}
-                            className={cn(
-                              watchedVideos.has(resource.id) &&
-                                "bg-green-100 text-green-700"
-                            )}
-                          >
-                            {watchedVideos.has(resource.id)
-                              ? "Watched"
-                              : "Mark Watched"}
-                          </Button>
+                        ))
+                    : filteredResources.length > 0 ? (
+                        filteredResources.map((resource) =>
+                          resource.isPlaylist ? (
+                            <Accordion type="single" collapsible key={resource.id}>
+                              <AccordionItem value={resource.id} className="border-b">
+                                <AccordionTrigger
+                                  className={cn(
+                                    "resource-card flex flex-col items-start gap-2 p-4 text-sm leading-tight rounded-lg m-1",
+                                    selectedResourceId === resource.id && "selected",
+                                    watchedVideos.has(resource.id) && "watched"
+                                  )}
+                                  onClick={() => handlePlaylistClick(resource)}
+                                >
+                                  <div className="flex w-full items-center gap-2 flex-wrap">
+                                    {resource.thumbnailUrl ? (
+                                      <img
+                                        src={resource.thumbnailUrl || "/placeholder.svg"}
+                                        alt="Thumbnail"
+                                        className="w-12 h-12 object-cover rounded-lg"
+                                        width={resource.thumbnailWidth}
+                                        height={resource.thumbnailHeight}
+                                      />
+                                    ) : (
+                                      <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                                        <Command className="w-6 h-6 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <div className="flex flex-col">
+                                      <span className="break-words max-w-[150px] md:max-w-[200px] font-medium text-foreground">
+                                        {resource.videoTitle || resource.Title}
+                                      </span>
+                                      <Badge variant="outline" className="w-fit mt-1 text-foreground border-foreground/20">Playlist</Badge>
+                                    </div>
+                                    <span className="ml-auto text-xs shrink-0 text-muted-foreground">
+                                      {new Date(
+                                        resource.uploadDate || resource.createdAt
+                                      ).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  <span className="break-words max-w-[260px] text-xs text-muted-foreground">
+                                    {resource.Description}
+                                  </span>
+                                  {resource.authorName && (
+                                    <div className="text-xs text-muted-foreground">
+                                      By:{" "}
+                                      <a
+                                        href={resource.authorUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="underline text-primary"
+                                      >
+                                        {resource.authorName}
+                                      </a>
+                                    </div>
+                                  )}
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                  <div className="px-4 py-2 text-sm break-words max-w-[260px] flex flex-col gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => toggleWatched(resource.id)}
+                                      className={cn(
+                                        "rounded-full flex gap-2 items-center border-foreground/20 text-foreground",
+                                        watchedVideos.has(resource.id) && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                      )}
+                                    >
+                                      {watchedVideos.has(resource.id) ? (
+                                        <>
+                                          <BookmarkCheck className="h-4 w-4" />
+                                          Watched
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Bookmark className="h-4 w-4" />
+                                          Mark Watched
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                </AccordionContent>
+                              </AccordionItem>
+                            </Accordion>
+                          ) : (
+                            <div
+                              key={resource.id}
+                              className={cn(
+                                "resource-card flex flex-col items-start gap-2 border-b p-4 text-sm leading-tight last:border-b-0 cursor-pointer rounded-lg m-1",
+                                selectedResourceId === resource.id && "selected",
+                                watchedVideos.has(resource.id) && "watched"
+                              )}
+                              onClick={() => handlePlaylistClick(resource)}
+                            >
+                              <div className="flex w-full items-center gap-2 flex-wrap">
+                                {resource.thumbnailUrl ? (
+                                  <img
+                                    src={resource.thumbnailUrl || "/placeholder.svg"}
+                                    alt="Thumbnail"
+                                    className="w-12 h-12 object-cover rounded-lg"
+                                    width={resource.thumbnailWidth}
+                                    height={resource.thumbnailHeight}
+                                  />
+                                ) : (
+                                  <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
+                                    <Command className="w-6 h-6 text-muted-foreground" />
+                                  </div>
+                                )}
+                                <div className="flex flex-col">
+                                  <span className="break-words max-w-[150px] md:max-w-[200px] font-medium text-foreground">
+                                    {resource.videoTitle || resource.Title}
+                                  </span>
+                                  <Badge variant="outline" className="w-fit mt-1 text-foreground border-foreground/20">Video</Badge>
+                                </div>
+                                <span className="ml-auto text-xs shrink-0 text-muted-foreground">
+                                  {new Date(
+                                    resource.uploadDate || resource.createdAt
+                                  ).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <span className="break-words max-w-[260px] text-xs text-muted-foreground">
+                                {resource.Description}
+                              </span>
+                              {resource.authorName && (
+                                <div className="text-xs text-muted-foreground">
+                                  By:{" "}
+                                  <a
+                                    href={resource.authorUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="underline text-primary"
+                                  >
+                                    {resource.authorName}
+                                  </a>
+                                </div>
+                              )}
+                              <div className="break-words max-w-[260px] text-xs flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleWatched(resource.id);
+                                  }}
+                                  className={cn(
+                                    "rounded-full flex gap-2 items-center border-foreground/20 text-foreground",
+                                    watchedVideos.has(resource.id) && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                                  )}
+                                >
+                                  {watchedVideos.has(resource.id) ? (
+                                    <>
+                                      <BookmarkCheck className="h-4 w-4" />
+                                      Watched
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Bookmark className="h-4 w-4" />
+                                      Mark Watched
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            </div>
+                          )
+                        )
+                      ) : (
+                        <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                          <p>No resources found</p>
+                          {searchTerm && (
+                            <p className="text-sm mt-2">Try adjusting your search criteria</p>
+                          )}
                         </div>
-                      </div>
-                    )
+                      )
                   )}
+                {hasMore && (
+                  <div ref={loadingRef} className="p-4 text-center text-foreground">
+                    Loading more resources...
+                  </div>
+                )}
               </SidebarGroupContent>
             </SidebarGroup>
           </SidebarContent>
+          <div className="sticky bottom-0 bg-background border-t p-2 text-sm text-muted-foreground">
+            {loading ? (
+              "Loading resources..."
+            ) : (
+              <>
+                Showing {filteredResources.length} of {totalResources} resources
+              </>
+            )}
+          </div>
         </Sidebar>
       </Sidebar>
 
       <div
         className={cn(
-          "absolute top-0 right-0 w-2 h-full bg-gray-300 cursor-col-resize hover:bg-gray-400",
+          "absolute top-0 right-0 w-2 h-full bg-border cursor-col-resize hover:bg-muted-foreground/20",
           !open && "hidden"
         )}
         onMouseDown={startResizing}
       />
 
       <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md rounded-lg bg-background text-foreground">
           <DialogHeader>
             <DialogTitle>Watch Full Playlist</DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-muted-foreground">
               This is a YouTube playlist. For the best experience, we suggest
               watching the full playlist on YouTube.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpenDialog(false)}>
+            <Button variant="outline" onClick={() => setOpenDialog(false)} className="border-foreground/20 text-foreground">
               Stay Here
             </Button>
-            <Button asChild>
+            <Button asChild className="bg-primary text-primary-foreground hover:bg-primary/90">
               <a
                 href={selectedPlaylistLink || "#"}
                 target="_blank"

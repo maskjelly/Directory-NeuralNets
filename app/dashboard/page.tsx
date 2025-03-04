@@ -1,4 +1,3 @@
-// Dashboard.tsx
 "use client"
 
 import { AppSidebar } from "@/components/add-sidebar"
@@ -28,6 +27,10 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import React from "react"
 import { getData } from "@/app/actions/route"
+import { Card, CardContent } from "@/components/ui/card"
+import { BookmarkCheck, Bookmark, ExternalLink } from 'lucide-react'
+import { Badge } from "@/components/ui/badge"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 interface Resource {
   id: string;
@@ -94,6 +97,7 @@ export default function Dashboard() {
   const [resources, setResources] = React.useState<Resource[]>([])
   const [watchedVideos, setWatchedVideos] = React.useState<Set<string>>(new Set())
   const [sidebarWidth, setSidebarWidth] = React.useState<number>(350)
+  const [loading, setLoading] = React.useState(true)
 
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/
@@ -118,28 +122,35 @@ export default function Dashboard() {
 
   React.useEffect(() => {
     async function fetchResources() {
-      const response = await getData()
-      if (response.success) {
-        const enhancedResources = await Promise.all(
-          response.data.map(async (resource) => {
-            const playlistId = extractPlaylistId(resource.Link)
-            const ytDetails = await fetchYouTubeDetails(resource.Link)
-            return {
-              ...resource,
-              isPlaylist: !!playlistId,
-              playlistId: playlistId || undefined,
-              videoTitle: ytDetails.videoTitle,
-              thumbnailUrl: ytDetails.thumbnailUrl,
-              thumbnailWidth: ytDetails.thumbnailWidth,
-              thumbnailHeight: ytDetails.thumbnailHeight,
-              authorName: ytDetails.authorName,
-              authorUrl: ytDetails.authorUrl,
-              uploadDate: ytDetails.uploadDate || resource.createdAt,
-              html: ytDetails.html,
-            }
-          })
-        )
-        setResources(enhancedResources)
+      setLoading(true)
+      try {
+        const response = await getData()
+        if (response.success) {
+          const enhancedResources = await Promise.all(
+            response.data.map(async (resource) => {
+              const playlistId = extractPlaylistId(resource.Link)
+              const ytDetails = await fetchYouTubeDetails(resource.Link)
+              return {
+                ...resource,
+                isPlaylist: !!playlistId,
+                playlistId: playlistId || undefined,
+                videoTitle: ytDetails.videoTitle,
+                thumbnailUrl: ytDetails.thumbnailUrl,
+                thumbnailWidth: ytDetails.thumbnailWidth,
+                thumbnailHeight: ytDetails.thumbnailHeight,
+                authorName: ytDetails.authorName,
+                authorUrl: ytDetails.authorUrl,
+                uploadDate: ytDetails.uploadDate || resource.createdAt,
+                html: ytDetails.html,
+              }
+            })
+          )
+          setResources(enhancedResources)
+        }
+      } catch (error) {
+        console.error("Error fetching resources:", error)
+      } finally {
+        setLoading(false)
       }
     }
     fetchResources()
@@ -182,17 +193,17 @@ export default function Dashboard() {
         onViewChange={handleViewChange}
       />
       <SidebarInset className="flex-1">
-        <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background p-4">
+        <header className="sticky top-0 flex shrink-0 items-center gap-2 border-b bg-background p-4 z-10">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#">All Resources</BreadcrumbLink>
+                <BreadcrumbLink href="#" className="text-foreground">All Resources</BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
               <BreadcrumbItem>
-                <BreadcrumbPage>
+                <BreadcrumbPage className="text-foreground">
                   {view === "resources" 
                     ? (selectedResource
                         ? selectedResource.resource.videoTitle || selectedResource.resource.Title
@@ -202,111 +213,188 @@ export default function Dashboard() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex flex-1 flex-col gap-4 p-4">
           {view === "resources" ? (
             selectedResource ? (
-              <div className="aspect-video w-full max-w-4xl mx-auto">
-                <iframe
-                  width="100%"
-                  height="100%"
-                  src={
-                    selectedResource.resource.isPlaylist
-                      ? `https://www.youtube.com/embed/videoseries?list=${selectedResource.resource.playlistId}`
-                      : `https://www.youtube.com/embed/${getYouTubeId(selectedResource.resource.Link)}`
-                  }
-                  title={selectedResource.resource.videoTitle || selectedResource.resource.Title}
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-                {selectedResource.resource.authorName && (
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    By: <a href={selectedResource.resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{selectedResource.resource.authorName}</a>
-                  </p>
-                )}
-              </div>
+              <Card className="overflow-hidden border-foreground/10">
+                <CardContent className="p-0">
+                  <div className="aspect-video w-full max-w-4xl mx-auto">
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      src={
+                        selectedResource.resource.isPlaylist
+                          ? `https://www.youtube.com/embed/videoseries?list=${selectedResource.resource.playlistId}`
+                          : `https://www.youtube.com/embed/${getYouTubeId(selectedResource.resource.Link)}`
+                      }
+                      title={selectedResource.resource.videoTitle || selectedResource.resource.Title}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="rounded-t-lg"
+                    />
+                  </div>
+                  <div className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-xl font-semibold text-foreground">{selectedResource.resource.videoTitle || selectedResource.resource.Title}</h2>
+                      <Badge variant={selectedResource.resource.isPlaylist ? "secondary" : "outline"} className="text-foreground border-foreground/20">
+                        {selectedResource.resource.isPlaylist ? "Playlist" : "Video"}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground mb-4">{selectedResource.resource.Description}</p>
+                    <div className="flex flex-wrap gap-2 items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {selectedResource.resource.authorName && (
+                          <p className="text-sm text-muted-foreground">
+                            By: <a href={selectedResource.resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">{selectedResource.resource.authorName}</a>
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground">
+                          Added: {new Date(selectedResource.resource.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => toggleWatched(selectedResource.resource.id)}
+                          className={cn(
+                            "rounded-full border-foreground/20 text-foreground",
+                            watchedVideos.has(selectedResource.resource.id) && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                          )}
+                        >
+                          {watchedVideos.has(selectedResource.resource.id) ? (
+                            <>
+                              <BookmarkCheck className="h-4 w-4 mr-2" />
+                              Watched
+                            </>
+                          ) : (
+                            <>
+                              <Bookmark className="h-4 w-4 mr-2" />
+                              Mark Watched
+                            </>
+                          )}
+                        </Button>
+                        <Button asChild variant="outline" size="sm" className="rounded-full border-foreground/20 text-foreground">
+                          <a href={selectedResource.resource.Link} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Open in YouTube
+                          </a>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ) : (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                Select a resource to view its video
+              <div className="flex h-[calc(100vh-8rem)] items-center justify-center text-muted-foreground">
+                <div className="text-center">
+                  <h2 className="text-xl font-semibold mb-2 text-foreground">Resource Directory</h2>
+                  <p>Select a resource from the sidebar to view its content</p>
+                </div>
               </div>
             )
           ) : (
             <div className="w-full overflow-x-auto">
               {resources.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-gray-100 hover:bg-gray-100">
-                      <TableHead className="font-semibold">Thumbnail</TableHead>
-                      <TableHead className="font-semibold">Title</TableHead>
-                      <TableHead className="font-semibold hidden md:table-cell">Description</TableHead>
-                      <TableHead className="font-semibold hidden lg:table-cell">Link</TableHead>
-                      <TableHead className="font-semibold">Type</TableHead>
-                      <TableHead className="font-semibold hidden md:table-cell">Author</TableHead>
-                      <TableHead className="font-semibold hidden md:table-cell">Date</TableHead>
-                      <TableHead className="font-semibold">Watched</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {resources.map((resource) => (
-                      <TableRow 
-                        key={resource.id}
-                        className={cn(
-                          "cursor-pointer",
-                          selectedResource?.resource.id === resource.id && "bg-gray-700 text-white hover:bg-gray-600",
-                          watchedVideos.has(resource.id) && "bg-pink-100 hover:bg-pink-200"
-                        )}
-                        onClick={() => handleResourceSelect(resource)}
-                      >
-                        <TableCell>
-                          {resource.thumbnailUrl ? (
-                            <img 
-                              src={resource.thumbnailUrl} 
-                              alt="Thumbnail" 
-                              className="w-16 h-9 object-cover rounded"
-                              width={resource.thumbnailWidth}
-                              height={resource.thumbnailHeight}
-                            />
-                          ) : (
-                            "N/A"
-                          )}
-                        </TableCell>
-                        <TableCell>{resource.videoTitle || resource.Title}</TableCell>
-                        <TableCell className="hidden md:table-cell">{resource.Description}</TableCell>
-                        <TableCell className="hidden lg:table-cell">
-                          <a href={resource.Link} target="_blank" rel="noopener noreferrer" className="underline">{resource.Link}</a>
-                        </TableCell>
-                        <TableCell>{resource.isPlaylist ? "Playlist" : "Video"}</TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {resource.authorName ? (
-                            <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline">{resource.authorName}</a>
-                          ) : "Unknown"}
-                        </TableCell>
-                        <TableCell className="hidden md:table-cell">
-                          {new Date(resource.uploadDate || resource.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              toggleWatched(resource.id)
-                            }}
-                            className={cn(
-                              watchedVideos.has(resource.id) && "bg-green-100 text-green-700"
-                            )}
-                          >
-                            {watchedVideos.has(resource.id) ? "Watched" : "Mark Watched"}
-                          </Button>
-                        </TableCell>
+                <div className="rounded-lg border border-foreground/10">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-muted/50">
+                        <TableHead className="font-semibold text-foreground">Thumbnail</TableHead>
+                        <TableHead className="font-semibold text-foreground">Title</TableHead>
+                        <TableHead className="font-semibold hidden md:table-cell text-foreground">Description</TableHead>
+                        <TableHead className="font-semibold hidden lg:table-cell text-foreground">Link</TableHead>
+                        <TableHead className="font-semibold text-foreground">Type</TableHead>
+                        <TableHead className="font-semibold hidden md:table-cell text-foreground">Author</TableHead>
+                        <TableHead className="font-semibold hidden md:table-cell text-foreground">Date</TableHead>
+                        <TableHead className="font-semibold text-foreground">Watched</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {resources.map((resource) => (
+                        <TableRow 
+                          key={resource.id}
+                          className={cn(
+                            "cursor-pointer",
+                            selectedResource?.resource.id === resource.id && "bg-purple-100 dark:bg-purple-900/30 text-foreground",
+                            watchedVideos.has(resource.id) && "bg-green-100 dark:bg-green-900/30 text-foreground"
+                          )}
+                          onClick={() => handleResourceSelect(resource)}
+                        >
+                          <TableCell>
+                            {resource.thumbnailUrl ? (
+                              <img 
+                                src={resource.thumbnailUrl || "/placeholder.svg"} 
+                                alt="Thumbnail" 
+                                className="w-16 h-9 object-cover rounded-lg"
+                                width={resource.thumbnailWidth}
+                                height={resource.thumbnailHeight}
+                              />
+                            ) : (
+                              "N/A"
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium text-foreground">{resource.videoTitle || resource.Title}</TableCell>
+                          <TableCell className="hidden md:table-cell text-foreground">{resource.Description}</TableCell>
+                          <TableCell className="hidden lg:table-cell">
+                            <a href={resource.Link} target="_blank" rel="noopener noreferrer" className="underline text-primary">{resource.Link}</a>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={resource.isPlaylist ? "secondary" : "outline"} className="text-foreground border-foreground/20">
+                              {resource.isPlaylist ? "Playlist" : "Video"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {resource.authorName ? (
+                              <a href={resource.authorUrl} target="_blank" rel="noopener noreferrer" className="underline text-primary">{resource.authorName}</a>
+                            ) : "Unknown"}
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell text-foreground">
+                            {new Date(resource.uploadDate || resource.createdAt).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                toggleWatched(resource.id)
+                              }}
+                              className={cn(
+                                "rounded-full border-foreground/20 text-foreground",
+                                watchedVideos.has(resource.id) && "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              )}
+                            >
+                              {watchedVideos.has(resource.id) ? (
+                                <>
+                                  <BookmarkCheck className="h-4 w-4 mr-2" />
+                                  Watched
+                                </>
+                              ) : (
+                                <>
+                                  <Bookmark className="h-4 w-4 mr-2" />
+                                  Mark
+                                </>
+                              )}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
-                <div className="flex h-full items-center justify-center text-muted-foreground">
-                  No resources available
+                <div className="flex h-[calc(100vh-8rem)] items-center justify-center text-muted-foreground">
+                  {loading ? (
+                    <p>Loading resources...</p>
+                  ) : (
+                    <p>No resources available</p>
+                  )}
                 </div>
               )}
             </div>
