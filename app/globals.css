@@ -1,49 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  /* Light mode variables */
-  --color-background: 0 0% 100%;
-  --color-foreground: 240 10% 3.9%;
-
-  --color-card: 0 0% 100%;
-  --color-card-foreground: 240 10% 3.9%;
-
-  --color-popover: 0 0% 100%;
-  --color-popover-foreground: 240 10% 3.9%;
-
-  --color-primary: 240 5.9% 10%;
-  --color-primary-foreground: 0 0% 98%;
-
-  --color-secondary: 240 4.8% 95.9%;
-  --color-secondary-foreground: 240 5.9% 10%;
-
-  --color-muted: 240 4.8% 95.9%;
-  --color-muted-foreground: 240 3.8% 46.1%;
-
-  --color-accent: 240 4.8% 95.9%;
-  --color-accent-foreground: 240 5.9% 10%;
-
-  --color-destructive: 0 84.2% 60.2%;
-  --color-destructive-foreground: 0 0% 98%;
-
-  --color-border: 240 5.9% 90%;
-  --color-input: 240 5.9% 90%;
-  --color-ring: 240 5.9% 10%;
-
-  --radius: 0.75rem;
-  --sidebar-width: 350px;
-  --sidebar-width-icon: 60px;
-
-  --color-sidebar-primary: 240 5.9% 10%;
-  --color-sidebar-primary-foreground: 0 0% 98%;
-  --color-sidebar-accent: 240 4.8% 95.9%;
-  --color-sidebar-accent-foreground: 240 5.9% 10%;
-
-  --color-watched: 142.1 76.2% 36.3%;
-  --color-watched-foreground: 355.7 100% 97.3%;
-  --color-selected: 262.1 83.3% 57.8%;
-  --color-selected-foreground: 210 40% 98%;
-
   /* Dark mode overrides */
   @dark {
     --color-background: 240 10% 3.9%;
